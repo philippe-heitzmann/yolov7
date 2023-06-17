@@ -3,7 +3,8 @@ yolo = YOLOv7(weights='yolov7.pt', source='inference/images', img_size=640, devi
               trace=True, augment=True, conf_thres=0.25, iou_thres=0.45, classes=None, agnostic_nms=False)
 yolo.detect()
 '''
-
+import cv2
+import numpy as np
 import torch
 
 from models.experimental import attempt_load
@@ -47,6 +48,34 @@ class YOLOv7Detector:
         self.modelc = load_classifier(name='resnet101', n=2)  # initialize
         self.modelc.load_state_dict(torch.load('weights/resnet101.pt', map_location=self.device)['model']).to(self.device).eval()
 
+    
+    def preprocess(self, img: np.ndarray) -> np.ndarray:
+        """
+        Resize a numpy array (image) to the desired shape.
+
+        Args:
+            img (np.ndarray): The input image as a numpy array.
+
+        Returns:
+            np.ndarray: The resized image as a numpy array.
+        """
+        assert len(img.shape) == 3, "Input should be a 3D numpy array."
+
+        # Resize the image to (img_size, img_size)
+        img_resized = cv2.resize(img, (self.img_size, self.img_size))
+        
+        # If image has an alpha channel (or any other extra channels), remove it
+        if img_resized.shape[2] > 3:
+            img_resized = img_resized[:, :, :3]
+
+        # Transpose image from (H, W, C) to (C, H, W)
+        img_transposed = np.transpose(img_resized, (2, 0, 1))
+
+        # Add an additional dimension at the beginning
+        img_final = np.expand_dims(img_transposed, axis=0)
+
+        return img_final
+
     def get_dataset(self):
         if self.webcam:
             dataset = LoadStreams(self.source, img_size=self.img_size, stride=self.stride)
@@ -57,6 +86,7 @@ class YOLOv7Detector:
     def detect(self, image_url, classify = False):
         # dataset = self.get_dataset()
         img = download_image_convert_np(image_url)
+        img = self.preprocess(img)
         if self.device.type != 'cpu':
             self.model(torch.zeros(1, 3, self.img_size, self.img_size).to(self.device).type_as(next(self.model.parameters())))  # run once
         # for path, img, im0s, vid_cap in dataset:
