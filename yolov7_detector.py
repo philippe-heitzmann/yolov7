@@ -8,8 +8,8 @@ import torch
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
-from utils.general import check_img_size, select_device, non_max_suppression, apply_classifier
-from utils.torch_utils import TracedModel, load_classifier
+from utils.general import check_img_size, non_max_suppression, apply_classifier
+from utils.torch_utils import TracedModel, load_classifier, select_device
 
 class YOLOv7Detector:
     def __init__(self, weights='/weights/yolov7.pt', source='inference/images', img_size=640, device='', half=True,
