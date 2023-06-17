@@ -10,6 +10,7 @@ from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
 from utils.general import check_img_size, non_max_suppression, apply_classifier
 from utils.torch_utils import TracedModel, load_classifier, select_device
+from utils.custom_utils import download_image_convert_np
 
 class YOLOv7Detector:
     def __init__(self, weights=['/weights/yolov7.pt'], source='inference/images', img_size=640, device='', half=True,
@@ -53,28 +54,29 @@ class YOLOv7Detector:
             dataset = LoadImages(self.source, img_size=self.img_size, stride=self.stride)
         return dataset
 
-    def detect(self, classify = False):
-        dataset = self.get_dataset()
+    def detect(self, image_url, classify = False):
+        # dataset = self.get_dataset()
+        img = download_image_convert_np(image_url)
         if self.device.type != 'cpu':
             self.model(torch.zeros(1, 3, self.img_size, self.img_size).to(self.device).type_as(next(self.model.parameters())))  # run once
-        for path, img, im0s, vid_cap in dataset:
-            img = torch.from_numpy(img).to(self.device)
-            img = img.half() if self.half else img.float()  # uint8 to fp16/32
-            img /= 255.0  # 0 - 255 to 0.0 - 1.0
-            if img.ndimension() == 3:
-                img = img.unsqueeze(0)
+        # for path, img, im0s, vid_cap in dataset:
+        img = torch.from_numpy(img).to(self.device)
+        img = img.half() if self.half else img.float()  # uint8 to fp16/32
+        img /= 255.0  # 0 - 255 to 0.0 - 1.0
+        if img.ndimension() == 3:
+            img = img.unsqueeze(0)
 
-            with torch.no_grad():   
-                pred = self.model(img, augment=self.augment)[0]
+        with torch.no_grad():   
+            pred = self.model(img, augment=self.augment)[0]
 
-            # Apply NMS
-            pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=self.classes, agnostic=self.agnostic_nms)
-            # Pass pred to second-stage classifier
-            if classify:
-                pred = self.classify(pred, self.modelc, img, im0s)
+        # Apply NMS
+        pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes=self.classes, agnostic=self.agnostic_nms)
+        # Pass pred to second-stage classifier
+        # if classify:
+        #     pred = self.classify(pred, self.modelc, img, im0s)
         return pred
 
-    def classify(self, classifier, pred, img, im0s):
-        # Apply second stage classifier here.
-        pred = apply_classifier(pred, classifier, img, im0s)
-        return pred
+    # def classify(self, classifier, pred, img, im0s):
+    #     # Apply second stage classifier here.
+    #     pred = apply_classifier(pred, classifier, img, im0s)
+    #     return pred
